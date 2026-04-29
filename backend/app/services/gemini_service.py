@@ -16,6 +16,12 @@ class GeminiService(AIProvider):
     ) -> AsyncIterator[str]:
         # Gemini API는 system role을 직접 지원하지 않으므로,
         # system 메시지를 첫 번째 user 메시지 앞에 병합하여 전달
+        #
+        # NOTE: 이 우회 방식은 OpenAI/DeepSeek의 네이티브 system role 대비 의미적 차이가 있습니다.
+        # system prompt가 user 메시지의 일부로 전달되므로, 모델에 따라 system 지시사항
+        # 준수도에 미묘한 차이가 발생할 수 있습니다. Gemini API가 추후 system role을
+        # 네이티브 지원하게 되면 이 우회 로직을 제거하고 직접 system 메시지를 전달하는
+        # 방식으로 전환하는 것이 바람직합니다.
         system_messages = [m for m in messages if m["role"] == "system"]
         chat_messages = [m for m in messages if m["role"] != "system"]
 
@@ -34,6 +40,7 @@ class GeminiService(AIProvider):
         response = await self.client.aio.models.generate_content_stream(
             model=model,
             contents=contents,
+            **kwargs,  # temperature, max_tokens 등 추가 파라미터를 Gemini API로 전달
         )
         async for chunk in response:
             # 방어 코드: chunk.text가 None이거나 빈 문자열인 경우 대비
@@ -67,6 +74,9 @@ class GeminiService(AIProvider):
         return contents
 
     async def get_models(self) -> List[Dict[str, str]]:
+        # NOTE: 정적 폴백 모델 목록입니다. Gemini API의 models.list 엔드포인트를
+        # 통해 동적으로 조회하는 방식으로 전환하면 최신 모델을 자동 반영할 수 있습니다.
+        # 현재는 데모/시연 목적으로 대표 모델만 하드코딩되어 있습니다.
         return [
             {"id": "gemini-2.5-flash-lite", "name": "Gemini 2.5 Flash Lite", "description": "경량 고속 모델"},
             {"id": "gemini-3.1-flash-lite-preview", "name": "Gemini 3.1 Flash Lite Preview", "description": "초경량 미리보기 모델"},

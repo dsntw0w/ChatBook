@@ -1,16 +1,11 @@
 # backend/app/models/conversation.py
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, CheckConstraint, func
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
 from app.database import Base
 import uuid
 
 def generate_uuid():
     return str(uuid.uuid4())
-
-def now_utc():
-    """UTC 현재 시간을 datetime 객체로 반환 (DateTime 컬럼용)."""
-    return datetime.now(timezone.utc)
 
 class Conversation(Base):
     __tablename__ = "conversations"
@@ -29,6 +24,7 @@ class Conversation(Base):
         ForeignKey("characters.id", ondelete="SET NULL"),
         nullable=True,
         default=None,
+        index=True,
     )
     created_at = Column(DateTime, nullable=False, default=func.now())
     updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
@@ -41,7 +37,7 @@ class Conversation(Base):
         order_by="Message.created_at"
     )
     order = relationship("Order", back_populates="conversation", uselist=False)
-    character = relationship("Character", backref="conversations")
+    character = relationship("Character", back_populates="conversations")
 
     __table_args__ = (
         CheckConstraint(
@@ -58,13 +54,15 @@ class Message(Base):
     conversation_id = Column(
         String,
         ForeignKey("conversations.id", ondelete="CASCADE"),
-        nullable=False
+        nullable=False,
+        index=True,
     )
     # RP 캐릭터봇 시스템 연동을 위한 session_id (nullable, 추후 마이그레이션용)
     session_id = Column(
         Integer,
         ForeignKey("chatsessions.id", ondelete="SET NULL"),
-        nullable=True
+        nullable=True,
+        index=True,
     )
     role = Column(String, nullable=False)
     content = Column(Text, nullable=False)

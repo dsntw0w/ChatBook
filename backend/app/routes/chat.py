@@ -17,7 +17,8 @@ from app.schemas import (
     ProviderModelsResponse, ModelInfo,
 )
 from app.services import ProviderRegistry
-from app.models.conversation import generate_uuid, now_utc
+from app.models.conversation import generate_uuid
+from app.utils import now_utc
 
 router = APIRouter(prefix="/api", tags=["chat"])
 logger = logging.getLogger(__name__)
@@ -27,7 +28,12 @@ logger = logging.getLogger(__name__)
 
 @router.get("/models", response_model=list[ProviderModelsResponse])
 async def get_models():
-    """사용 가능한 모든 AI Provider의 모델 목록 조회"""
+    """
+    사용 가능한 모든 AI Provider의 모델 목록 조회
+
+    일부 Provider가 실패하더라도 나머지 Provider의 모델 목록은 정상 반환됩니다.
+    실패한 Provider는 로그에 기록되며, 응답에서 제외됩니다.
+    """
     providers = []
     for provider_name in ProviderRegistry.list_providers():
         try:
@@ -39,6 +45,12 @@ async def get_models():
             ))
         except Exception as e:
             logger.error(f"Failed to get models from {provider_name}: {e}")
+            # Provider 실패 시 빈 모델 목록으로 응답에 포함하여
+            # 클라이언트가 어떤 Provider가 실패했는지 인지할 수 있도록 함
+            providers.append(ProviderModelsResponse(
+                provider=provider_name,
+                models=[],
+            ))
     return providers
 
 
@@ -163,7 +175,7 @@ async def chat_send(
         # 사용자 제공 API 키로 동적 provider 인스턴스 생성
         from app.services import create_provider_instance
         try:
-            provider = create_provider_instance(request.provider, request.api_key)
+            provider = create_provider_instance(request.provider, request.api_key, request.base_url)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
     else:
@@ -181,6 +193,7 @@ async def chat_send(
 
     async def event_stream():
         full_content = ""
+        token_count = 0
         save_db = None
 
         try:
@@ -189,21 +202,59 @@ async def chat_send(
                 model=request.model,
             ):
                 full_content += token
+                token_count += 1
                 event_data = json.dumps({"type": "token", "content": token}, ensure_ascii=False)
                 yield f"data: {event_data}\n\n"
 
-            # 6. AI 응답 저장 (별도 DB 세션으로 격리, session_id 포함)
-            save_db = SessionLocal()
-            ai_msg = Message(
-                id=ai_msg_id,
-                conversation_id=conv_id,
-                role="assistant",
-                content=full_content,
-                created_at=now_utc(),
-                session_id=request.session_id,
-            )
-            save_db.add(ai_msg)
+                # 50토큰마다 중간 저장 (SSE 전송 차단 방지를 위해 yield 이후 수행)
+                if token_count % 50 == 0:
+                    try:
+                        if save_db is None:
+                            save_db = SessionLocal()
+                        # 중간 저장: 기존 메시지가 있으면 UPDATE, 없으면 INSERT
+                        existing = save_db.query(Message).filter(Message.id == ai_msg_id).first()
+                        if existing:
+                            existing.content = full_content
+                        else:
+                            ai_msg = Message(
+                                id=ai_msg_id,
+                                conversation_id=conv_id,
+                                role="assistant",
+                                content=full_content,
+                                created_at=now_utc(),
+                                session_id=request.session_id,
+                            )
+                            save_db.add(ai_msg)
+                        # 대화방 updated_at 갱신
+                        conv = save_db.query(Conversation).filter(Conversation.id == conv_id).first()
+                        if conv:
+                            conv.updated_at = now_utc()
+                        save_db.commit()
+                    except Exception as e:
+                        logger.error(f"Intermediate save error: {e}")
+                        if save_db is not None:
+                            try:
+                                save_db.rollback()
+                            except Exception:
+                                pass
 
+            # 6. AI 응답 최종 저장 (별도 DB 세션으로 격리, session_id 포함)
+            if save_db is None:
+                save_db = SessionLocal()
+            # 최종 저장: 기존 메시지가 있으면 UPDATE, 없으면 INSERT
+            existing = save_db.query(Message).filter(Message.id == ai_msg_id).first()
+            if existing:
+                existing.content = full_content
+            else:
+                ai_msg = Message(
+                    id=ai_msg_id,
+                    conversation_id=conv_id,
+                    role="assistant",
+                    content=full_content,
+                    created_at=now_utc(),
+                    session_id=request.session_id,
+                )
+                save_db.add(ai_msg)
             # 대화방 updated_at 갱신
             conv = save_db.query(Conversation).filter(Conversation.id == conv_id).first()
             if conv:
@@ -323,6 +374,7 @@ async def get_conversation(conv_id: str, db: Session = Depends(get_db)):
         character_id=conv.character_id,
         created_at=conv.created_at,
         updated_at=conv.updated_at,
+        message_count=len(messages),
         messages=[
             MessageResponse(
                 id=m.id,

@@ -69,7 +69,7 @@ async def get_character(character_id: int, db: Session = Depends(get_db)):
     return character
 
 
-@router.put("/{character_id}", response_model=CharacterResponse)
+@router.patch("/{character_id}", response_model=CharacterResponse)
 async def update_character(
     character_id: int,
     data: CharacterUpdate,
@@ -212,7 +212,7 @@ async def get_character_settings(
     return settings
 
 
-@router.put("/{character_id}/settings", response_model=CharacterSettingsResponse)
+@router.patch("/{character_id}/settings", response_model=CharacterSettingsResponse)
 async def update_character_settings(
     character_id: int,
     data: CharacterSettingsUpdate,

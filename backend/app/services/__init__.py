@@ -10,7 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 class ProviderRegistry:
-    """Provider 관리 레지스트리 (싱글톤 패턴)"""
+    """Provider 관리 레지스트리 (싱글톤 패턴)
+
+    NOTE: 클래스 변수 기반 싱글톤이므로 `uvicorn --workers N` (멀티프로세스) 실행 시
+    각 워커 프로세스가 독립적인 _providers 사본을 가지며 프로세스 간 공유되지 않습니다.
+    단일 워커(--workers 1) 또는 FastAPI dev 모드(--reload)에서는 문제없이 동작합니다.
+    """
 
     _providers: dict[str, AIProvider] = {}
 
@@ -61,19 +66,30 @@ def init_providers(config) -> None:
         ProviderRegistry.register(DemoProvider())
 
 
-def create_provider_instance(provider_name: str, api_key: str) -> AIProvider:
-    """요청별 API 키로 provider 인스턴스를 동적 생성합니다."""
-    if provider_name == "openai":
-        from .openai_service import OpenAIService
-        return OpenAIService(api_key=api_key)
-    elif provider_name == "gemini":
-        from .gemini_service import GeminiService
-        return GeminiService(api_key=api_key)
-    elif provider_name == "deepseek":
-        from .deepseek_service import DeepSeekService
-        return DeepSeekService(api_key=api_key)
-    else:
-        raise ValueError(f"Cannot create provider instance for: {provider_name}")
+# Provider 팩토리 매핑 테이블 — 신규 Provider 추가 시 이 맵에만 항목을 추가하면 됩니다.
+# Open-Closed Principle 준수: create_provider_instance()를 수정하지 않고도 확장 가능
+_PROVIDER_FACTORY_MAP: dict = {
+    "openai": lambda api_key, base_url=None: OpenAIService(api_key=api_key),
+    "gemini": lambda api_key, base_url=None: GeminiService(api_key=api_key),
+    "deepseek": lambda api_key, base_url=None: DeepSeekService(
+        api_key=api_key, base_url=base_url or "https://api.deepseek.com"
+    ),
+}
+
+
+def create_provider_instance(provider_name: str, api_key: str, base_url: str | None = None) -> AIProvider:
+    """요청별 API 키로 provider 인스턴스를 동적 생성합니다.
+
+    _PROVIDER_FACTORY_MAP을 통해 Provider 등록을 중앙화하여
+    신규 Provider 추가 시 if-elif 체인 수정 없이 맵에만 항목을 추가하면 됩니다.
+    """
+    factory = _PROVIDER_FACTORY_MAP.get(provider_name)
+    if factory is None:
+        available = list(_PROVIDER_FACTORY_MAP.keys())
+        raise ValueError(
+            f"Cannot create provider instance for: {provider_name}. Available: {available}"
+        )
+    return factory(api_key, base_url)
 
 
 def _register_real_providers(config) -> None:

@@ -28,8 +28,9 @@ echo   컨테이너 및 볼륨 삭제 완료
 
 echo.
 echo [2/5] Docker 이미지 삭제 중...
-docker rmi chatbook-backend 2>nul
-docker rmi chatbook-frontend 2>nul
+for /f "usebackq delims=" %%i in (`docker compose images -q 2^>nul`) do (
+    docker rmi %%i 2>nul
+)
 echo   이미지 삭제 완료 (없는 경우 무시)
 
 echo.

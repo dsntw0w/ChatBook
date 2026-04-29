@@ -97,19 +97,10 @@ if %ERRORLEVEL% NEQ 0 (
 echo Docker 데몬이 정상 실행 중입니다.
 echo.
 
-echo [1/2] Docker 이미지 빌드 중...
-docker compose build
+echo [1/1] Docker 빌드 및 컨테이너 실행 중...
+docker compose up -d --build
 if %ERRORLEVEL% NEQ 0 (
-    echo [오류] Docker 이미지 빌드에 실패했습니다.
-    pause
-    exit /b 1
-)
-
-echo.
-echo [2/2] Docker 컨테이너 실행 중...
-docker compose up -d
-if %ERRORLEVEL% NEQ 0 (
-    echo [오류] Docker 컨테이너 실행에 실패했습니다.
+    echo [오류] Docker 빌드/실행에 실패했습니다.
     pause
     exit /b 1
 )

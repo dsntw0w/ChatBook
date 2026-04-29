@@ -9,7 +9,8 @@ from fastapi.responses import StreamingResponse, Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Order, Conversation, Message, Character, ChatSession
+from app.models import Order, Conversation, Message
+from app.utils import get_character_name_for_order
 
 router = APIRouter(prefix="/api", tags=["export"])
 logger = logging.getLogger(__name__)
@@ -26,24 +27,9 @@ def _serialize_for_json(obj: object) -> object:
     return obj
 
 
-def _get_character_name_for_order(order: Order, db: Session) -> str | None:
-    """주문에 연결된 캐릭터봇 이름 조회 (Message.session_id → ChatSession → Character)"""
-    result = (
-        db.query(Character.name)
-        .join(ChatSession, ChatSession.character_id == Character.id)
-        .join(Message, Message.session_id == ChatSession.id)
-        .filter(
-            Message.conversation_id == order.conversation_id,
-            Message.session_id.isnot(None),
-        )
-        .first()
-    )
-    return result[0] if result else None
-
-
 def _get_export_data(order: Order, conv: Conversation, messages: list[Message], db: Session) -> dict:
     """익스포트용 데이터 구성 (datetime → ISO 문자열 변환 포함)"""
-    character_name = _get_character_name_for_order(order, db)
+    character_name = get_character_name_for_order(order, db)
 
     data = {
         "order": {

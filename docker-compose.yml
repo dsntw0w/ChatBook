@@ -1,3 +1,4 @@
+# Docker Compose v2 전용 기능: 프로젝트 이름 명시적 지정 (v1 미지원, 현재 사실상 표준)
 name: chatbook
 
 services:
@@ -6,13 +7,13 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    restart: always
+    restart: unless-stopped
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./data:/app/data
     environment:
-      - DATABASE_URL=sqlite:///app/data/chatbook.db
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///app/data/chatbook.db}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-gemini-dummy}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-deepseek-dummy}
@@ -20,8 +21,8 @@ services:
       - USE_DEMO_MODE=${USE_DEMO_MODE:-true}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 30s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
       timeout: 10s
       retries: 3
 
@@ -33,11 +34,11 @@ services:
       args:
         - BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL:-http://backend:8000}
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
-    restart: always
+    restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
-      - BACKEND_INTERNAL_URL=http://backend:8000
+      - BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL:-http://backend:8000}
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     depends_on:
       backend:

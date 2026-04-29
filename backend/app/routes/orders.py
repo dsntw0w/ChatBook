@@ -11,27 +11,14 @@ from app.schemas import (
     OrderResponse, OrderDetailResponse,
     ConversationDetailResponse, MessageResponse,
 )
-from app.models.conversation import generate_uuid, now_utc
+from app.models.conversation import generate_uuid
+from app.utils import now_utc, get_character_name_for_order
 
 router = APIRouter(prefix="/api", tags=["orders"])
 logger = logging.getLogger(__name__)
 
 
-# ==================== 헬퍼 함수 ====================
-
-def _get_character_name_for_order(order: Order, db: Session) -> str | None:
-    """주문에 연결된 캐릭터봇 이름 조회 (Message.session_id → ChatSession → Character)"""
-    result = (
-        db.query(Character.name)
-        .join(ChatSession, ChatSession.character_id == Character.id)
-        .join(Message, Message.session_id == ChatSession.id)
-        .filter(
-            Message.conversation_id == order.conversation_id,
-            Message.session_id.isnot(None),
-        )
-        .first()
-    )
-    return result[0] if result else None
+# ==================== 헬퍼 함수 (공통 유틸리티는 app.utils 에서 import) ====================
 
 
 def _build_order_response(order: Order, conversation_title: str, character_name: str | None = None) -> OrderResponse:
@@ -148,7 +135,7 @@ async def get_order(order_id: str, db: Session = Depends(get_db)):
         .all()
     )
 
-    character_name = _get_character_name_for_order(order, db)
+    character_name = get_character_name_for_order(order, db)
 
     return OrderDetailResponse(
         id=order.id,
@@ -225,13 +212,21 @@ async def update_order_status(
 
     conv = db.query(Conversation).filter(Conversation.id == order.conversation_id).first()
 
-    char_name = _get_character_name_for_order(order, db)
+    char_name = get_character_name_for_order(order, db)
     return _build_order_response(order, conv.title if conv else "(삭제된 대화)", char_name)
 
 
 @router.delete("/orders/{order_id}", status_code=204)
 async def cancel_order(order_id: str, db: Session = Depends(get_db)):
-    """주문 취소 (접수 상태만 가능)"""
+    """
+    주문 취소 (접수 상태만 가능)
+
+    NOTE: REST 의미론과 달리, DELETE 요청은 실제 DB 행 삭제가 아닌
+    주문 상태를 "취소"로 변경하는 소프트 삭제(soft delete) 방식입니다.
+    이는 감사 추적(audit trail)과 데이터 보존을 위한 의도적 설계입니다.
+    완전한 REST 순수성이 요구된다면 PATCH /api/orders/{id}/status
+    엔드포인트로 {"status": "취소"}를 전송하는 방식으로 통합할 수 있습니다.
+    """
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="주문을 찾을 수 없습니다.")

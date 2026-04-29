@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+*.egg
+.python-version
+venv/
+.venv/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# Database
+*.db
+data/

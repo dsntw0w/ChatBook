@@ -11,7 +11,8 @@ class Order(Base):
     conversation_id = Column(
         String,
         ForeignKey("conversations.id", ondelete="CASCADE"),
-        nullable=False
+        nullable=False,
+        index=True,
     )
     status = Column(String, nullable=False, default="접수")
     quantity = Column(Integer, nullable=False, default=1)
@@ -29,4 +30,8 @@ class Order(Base):
             name="ck_order_status"
         ),
         CheckConstraint("quantity >= 1", name="ck_order_quantity"),
+        CheckConstraint(
+            "cover_style IN ('basic', 'premium')",
+            name="ck_order_cover_style"
+        ),
     )

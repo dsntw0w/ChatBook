@@ -2,13 +2,7 @@
 """Role Playing 캐릭터봇 시스템을 위한 DB 모델"""
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
 from app.database import Base
-
-
-def utcnow():
-    """UTC 현재 시간을 datetime 객체로 반환."""
-    return datetime.now(timezone.utc)
 
 
 class Character(Base):
@@ -33,6 +27,10 @@ class Character(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    conversations = relationship(
+        "Conversation",
+        back_populates="character",
+    )
 
 
 class ChatSession(Base):
@@ -44,6 +42,7 @@ class ChatSession(Base):
         Integer,
         ForeignKey("characters.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     title = Column(String(200), nullable=False, default="New Chat")
     provider = Column(String(50), nullable=True)
@@ -56,7 +55,7 @@ class ChatSession(Base):
     messages = relationship(
         "Message",
         back_populates="session",
-        cascade="all, delete-orphan",
+        cascade="save-update, merge, delete, delete-orphan",
         order_by="Message.created_at",
     )
 
@@ -71,6 +70,7 @@ class CharacterSettings(Base):
         ForeignKey("characters.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
+        index=True,
     )
     description = Column(Text, nullable=True)
     persona = Column(Text, nullable=True)

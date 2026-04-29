@@ -43,7 +43,6 @@ ChatBook은 OpenAI, Google Gemini, DeepSeek 등 다양한 AI와의 대화를 하
 | **Lv2** | 📦 책 주문 관리 | 대화방 → 책 주문, 상태 머신(접수→제작중→완료), 중복 방지 |
 | **Lv3** | 📤 데이터 익스포트 | JSON/ZIP 형식, 주문+대화+캐릭터 데이터 구조화 내보내기 |
 
-> **핵심 차별점**: `USE_DEMO_MODE=true` 기본 활성화로 API 키 없이 `docker compose up -d` 한 줄로 모든 기능 체험 가능. DemoProvider가 키워드 기반 목업 응답을 생성하며, 멱등적 시드 데이터(대화방 3개, 주문 2개, 캐릭터봇 1개)가 자동 생성되어 실행 직후 바로 서비스를 확인할 수 있습니다.
 
 ---
 
@@ -77,8 +76,6 @@ copy .env.example .env    # Windows
 docker compose up -d
 ```
 
-> 💡 `.env` 파일이 없으면 데모 모드로 자동 실행됩니다. `.env.example`을 복사하면 기본 설정이 적용됩니다.
-
 - **Frontend**: http://localhost:3000
 - **Backend API 문서 (Swagger)**: http://localhost:8000/docs
 
@@ -91,11 +88,6 @@ docker compose up -d
 - 시작 시 대화방 3개, 주문 2개, 캐릭터봇 1개의 멱등적 시드 데이터 자동 생성
 - 외부 API 호출이 전혀 발생하지 않아 네트워크 제한 환경에서도 동작
 - DemoProvider는 ProviderRegistry에 최우선 등록되며, 실제 API 키가 있으면 demo + real 병존
-
-```bash
-# .env 파일 없이 바로 실행 (기본값 USE_DEMO_MODE=true)
-docker compose up -d
-```
 
 #### 🚀 일반 모드 (실제 AI 사용)
 실제 AI 서비스(OpenAI, Gemini, DeepSeek)를 사용하려면 API 키를 설정하고 데모 모드를 비활성화합니다.

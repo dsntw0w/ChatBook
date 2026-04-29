@@ -3,12 +3,9 @@
 from app.database import SessionLocal, init_db
 from app.models import Conversation, Message, Order, Character, CharacterSettings
 from app.config import settings
+from app.utils import now_utc
 import uuid
-from datetime import datetime, timezone
-
-
-def now_utc():
-    return datetime.now(timezone.utc)
+from datetime import datetime
 
 
 def add_seconds(dt: datetime, seconds: int) -> datetime:
@@ -145,13 +142,23 @@ def seed_demo_conversations():
 
 
 def seed_demo_provider_data():
-    """데모 모드 전용 추가 시드 데이터"""
+    """데모 모드 전용 추가 시드 데이터
+
+    DemoProvider는 demo_service.py에서 하드코딩된 응답 템플릿을 사용하므로
+    DB 시드가 필요하지 않습니다. 이 함수는 데모 모드 활성화 확인 및
+    향후 데모 전용 시드 데이터(예: 샘플 응답 템플릿, 추가 캐릭터)를
+    추가할 수 있는 확장점으로 유지합니다.
+    """
     if not settings.USE_DEMO_MODE:
         return
 
-    # DemoProvider가 사용할 응답 템플릿이나 추가 설정은
-    # 03-ai-provider-layer.md의 demo_service.py에서 처리
-    pass
+    db = SessionLocal()
+    try:
+        # 데모 모드 활성화 로그
+        print("[DEMO] 데모 모드 활성화: DemoProvider가 응답을 처리합니다.")
+        # 향후 데모 전용 데이터 추가 시 이곳에 구현
+    finally:
+        db.close()
 
 
 def seed_character_bots():

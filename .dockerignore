@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+*.egg
+.python-version
+venv/
+.venv/
+
+# Node
+node_modules/
+.pnpm-store/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Portable runtime (불필요 - Docker에서는 pip 사용)
+runtime/
+
+# Environment
+.env
+.env.local
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore

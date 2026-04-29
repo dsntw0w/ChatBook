@@ -12,6 +12,7 @@ from app.database import init_db
 from app.seed import seed_demo_conversations, seed_demo_provider_data, seed_character_bots
 from app.services import init_providers, ProviderRegistry
 from app.routes import chat_router, orders_router, export_router, character_router
+from app.schemas import ErrorResponse
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -64,7 +65,7 @@ async def value_error_handler(request: Request, exc: ValueError):
     logger.warning(f"ValueError: {exc}")
     return JSONResponse(
         status_code=400,
-        content={"error": "BAD_REQUEST", "message": str(exc)},
+        content=ErrorResponse(error="BAD_REQUEST", message=str(exc)).model_dump(),
     )
 
 
@@ -74,7 +75,10 @@ async def connection_error_handler(request: Request, exc: ConnectionError):
     logger.error(f"ConnectionError: {exc}")
     return JSONResponse(
         status_code=502,
-        content={"error": "AI_PROVIDER_ERROR", "message": f"AI 서비스 연결 실패: {str(exc)}"},
+        content=ErrorResponse(
+            error="AI_PROVIDER_ERROR",
+            message=f"AI 서비스 연결 실패: {str(exc)}"
+        ).model_dump(),
     )
 
 
@@ -84,7 +88,10 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"error": "INTERNAL_SERVER_ERROR", "message": "서버 내부 오류가 발생했습니다."},
+        content=ErrorResponse(
+            error="INTERNAL_SERVER_ERROR",
+            message="서버 내부 오류가 발생했습니다."
+        ).model_dump(),
     )
 
 

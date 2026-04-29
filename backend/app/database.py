@@ -3,7 +3,7 @@
 #       고려하여 PostgreSQL 또는 MySQL로 마이그레이션을 검토할 수 있습니다.
 #       SQLAlchemy ORM을 사용하므로 dialect 변경만으로 전환 가능합니다.
 #       (참조: code-review-debug-prep.md §2.3, 제안 이슈 #20)
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.config import settings
 import os
@@ -16,6 +16,15 @@ engine = create_engine(
     settings.DATABASE_URL,
     connect_args={"check_same_thread": False}  # SQLite 전용: 멀티스레드 허용
 )
+
+
+@event.listens_for(engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    """SQLite 연결 시 WAL 모드 활성화 (동시 읽기-쓰기 지원)."""
+    if settings.DATABASE_URL.startswith("sqlite"):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

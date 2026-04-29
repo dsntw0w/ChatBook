@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=os.environ.get("ENV_FILE", str(_BASE_DIR / ".env")),
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     # Database

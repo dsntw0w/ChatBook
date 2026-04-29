@@ -1,7 +1,7 @@
 # backend/app/schemas.py
 """Pydantic 요청/응답 스키마 - 모든 API 엔드포인트용"""
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
 
 
@@ -11,6 +11,8 @@ class ConversationCreate(BaseModel):
     """대화방 생성 요청"""
     title: str = Field(default="새 대화", max_length=200)
     provider: str = Field(default="openai", pattern=r"^(openai|gemini|deepseek|demo)$")
+    # 기본값 "gpt-5-nano"는 데모/시드용 가상 모델명입니다.
+    # 실제 OpenAI API 사용 시 "gpt-4o-mini" 등으로 변경하세요.
     model: str = Field(default="gpt-5-nano", max_length=100)
     character_id: Optional[int] = Field(default=None, description="연결할 캐릭터 ID (일반 대화일 경우 생략)")
 
@@ -56,10 +58,13 @@ class ChatSendRequest(BaseModel):
     conversation_id: str = Field(..., description="대화방 ID")
     message: str = Field(..., min_length=1, max_length=10000)
     provider: str = Field(default="openai", pattern=r"^(openai|gemini|deepseek|demo)$")
+    # 기본값 "gpt-5-nano"는 데모/시드용 가상 모델명입니다.
+    # 실제 OpenAI API 사용 시 "gpt-4o-mini" 등으로 변경하세요.
     model: str = Field(default="gpt-5-nano")
     character_id: Optional[int] = Field(default=None, description="캐릭터 ID (선택)")
     session_id: Optional[int] = Field(default=None, description="세션 ID (선택, RP 캐릭터봇 연동용)")
     api_key: Optional[str] = Field(default=None, description="사용자 제공 API 키 (선택)")
+    base_url: Optional[str] = Field(default=None, description="사용자 제공 API base URL (선택, DeepSeek 등 프록시/자체 호스팅용)")
 
 
 class MessageResponse(BaseModel):
@@ -79,7 +84,7 @@ class OrderCreate(BaseModel):
     """주문 생성 요청"""
     conversation_id: str
     quantity: int = Field(default=1, ge=1, le=100)
-    cover_style: str = Field(default="basic")
+    cover_style: Literal["basic", "premium"] = Field(default="basic")
     memo: str = Field(default="", max_length=500)
 
 
@@ -162,8 +167,16 @@ class CharacterResponse(BaseModel):
 class ChatSessionCreate(BaseModel):
     """캐릭터 세션 생성 요청"""
     title: Optional[str] = Field(default="New Chat", max_length=200)
-    provider: Optional[str] = None
-    model: Optional[str] = None
+    provider: Optional[str] = Field(
+        default=None,
+        pattern=r"^(openai|gemini|deepseek|demo)$",
+        description="AI Provider (openai, gemini, deepseek, demo 중 하나)"
+    )
+    model: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="AI 모델명 (예: gpt-4o-mini, gemini-2.5-flash-lite, deepseek-chat)"
+    )
 
 
 class ChatSessionResponse(BaseModel):
