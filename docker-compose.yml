@@ -1,0 +1,45 @@
+name: chatbook
+
+services:
+  backend:
+    container_name: chatbook-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///app/data/chatbook.db
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-dummy}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-gemini-dummy}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-deepseek-dummy}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      - USE_DEMO_MODE=${USE_DEMO_MODE:-true}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    container_name: chatbook-frontend
+    build:
+      context: ./frontend
+      dockerfile: ../Dockerfile.frontend
+      args:
+        - BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL:-http://backend:8000}
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    restart: always
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - BACKEND_INTERNAL_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+
