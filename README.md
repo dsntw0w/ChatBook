@@ -16,9 +16,6 @@ ChatBook은 OpenAI, Google Gemini, DeepSeek 등 다양한 AI와의 대화를 하
 6. [설계 의도](#6-설계-의도)
 7. [API 엔드포인트](#7-api-엔드포인트)
 8. [데이터베이스 모델](#8-데이터베이스-모델)
-9. [테스트](#9-테스트)
-10. [라이선스](#10-라이선스)
-11. [PDF 제출 체크리스트](#11-pdf-제출-체크리스트)
 
 ---
 
@@ -151,7 +148,7 @@ bash test-docker.sh
 
 ```bash
 BACKEND_PORT=8080
-FRONTEND_PORT=4000
+FRONTEND_PORT=3000
 ```
 
 ### 2.7 서비스 중지
@@ -161,26 +158,12 @@ docker compose down          # 서비스 중지 (데이터 유지)
 docker compose down -v       # DB 데이터까지 완전 삭제
 ```
 
-### 2.8 문제해결 (Troubleshooting)
-
-| 증상 | 원인 | 해결 방법 |
-|------|------|-----------|
-| `port is already allocated` | 포트 충돌 | `.env`에서 `BACKEND_PORT`, `FRONTEND_PORT` 변경 (섹션 2.6 참조) |
-| `docker daemon is not running` | Docker Desktop 미실행 | Docker Desktop을 먼저 실행 |
-| `'cp'은(는) 내부 또는 외부 명령...` | Windows에서 Unix 명령어 사용 | `copy .env.example .env` 사용 |
-| `WSL 2 installation is incomplete` | WSL2 미설치 | 관리자 PowerShell에서 `wsl --update` 실행 후 재부팅 |
-| `Cannot locate specified Dockerfile` | 구버전 Docker Compose | `docker compose` (v2) 사용, 또는 Docker Desktop 업데이트 |
-| 빌드 중 메모리 부족 | Docker 메모리 부족 | Docker Desktop 설정 → Resources → Memory 증가 |
-| 한글 깨짐 | 터미널 인코딩 | `chcp 65001` 실행 (UTF-8) |
-| 프론트엔드 접속 불가 | 백엔드 미실행 | `docker compose logs backend` 로그 확인 |
 
 ---
 
 ## 3. 완성한 레벨 및 구현 내용
 
 ### Lv1 — 🤖 AI 캐릭터 채팅 (핵심 서비스)
-
-> **평가 포인트: 서비스 플로우 완성도** — AI Provider 선택부터 SSE 스트리밍 응답, 대화 저장까지 전체 플로우가 끊김 없이 작동합니다.
 
 | 구현 항목 | 상세 내용 |
 |-----------|-----------|
@@ -206,8 +189,6 @@ docker compose down -v       # DB 데이터까지 완전 삭제
 
 ### Lv2 — 📦 책 주문 관리
 
-> **평가 포인트: 비즈니스 로직** — 주문 상태 머신(서버 측 삼중 검증), 중복 주문 방지, 낙관적 업데이트+롤백 등 안정적인 비즈니스 로직이 작동합니다.
-
 | 구현 항목 | 상세 내용 |
 |-----------|-----------|
 | **주문 CRUD** | 생성·목록·상세·취소, 주문 정보(수량, 표지 스타일, 메모) 저장 |
@@ -219,8 +200,6 @@ docker compose down -v       # DB 데이터까지 완전 삭제
 | **캐릭터 연동** | Message.session_id → ChatSession → Character 경로로 캐릭터 이름 자동 조회 |
 
 ### Lv3 — 📤 데이터 익스포트
-
-> **평가 포인트: 데이터 모델링과 직렬화 능력** — 주문 1건에 필요한 모든 데이터(주문+대화+캐릭터)를 구조화하여 JSON/ZIP으로 한 번에 내보냅니다.
 
 | 구현 항목 | 상세 내용 |
 |-----------|-----------|
@@ -476,7 +455,6 @@ chatbook/
 | **Roo Code** (VS Code Extension) | 더미 데이터 설계 및 생성 (seed.py 멱등적 시드), 시스템 프롬프트 작성 (할머니 캐릭터 설정), README.md 작성 | 시드 데이터·문서화 |
 | **Google Gemini** (Antigravity) | PDF 요구사항 분석, 코드 리뷰, 교차 검토, 추가 아이디어 검토, 디버깅 보조 | 문서화·분석·검토 |
 
-> **AI 활용 철학**: Roo Code를 주 설계·구현 도구로 사용하고, Google Gemini를 독립적 검토자/분석자로 활용하여 "AI가 설계·구현한 것을 다른 AI가 검증"하는 교차 검증 워크플로우를 구축했습니다. 특히 Provider 추상화 계층 설계, SSE StreamingResponse의 별도 DB 세션 문제 해결, 주문 상태 머신 삼중 검증 등 아키텍처상 중요한 결정은 AI의 제안을 비판적으로 검토한 후 채택했습니다.
 
 ---
 
@@ -505,12 +483,10 @@ ChatBook은 "AI와의 대화 자체가 소장 가치 있는 콘텐츠가 될 수
 |----------|------|------|
 | ⭐⭐⭐ | **책 미리보기** | 주문 전 대화 내용을 실제 책 레이아웃으로 미리보기, 페이지네이션 |
 | ⭐⭐⭐ | **다양한 캐릭터** | 할머니 외 다양한 RP 캐릭터(역사 선생님, 여행 가이드, 요리사 등) 프리셋 |
-| ⭐⭐ | **대화 검색** | 전체 대화 내용 전문 검색 (FTS), 태그 기반 분류 |
 | ⭐⭐ | **책 표지 커스터마이징** | 커버 스타일 프리셋 확장, 사용자 업로드 이미지 지원 |
 | ⭐⭐ | **대화 내보내기 템플릿** | PDF, EPUB 등 추가 출력 형식 지원 |
 | ⭐ | **협업 대화방** | 여러 사용자가 동일 AI와 함께 대화하는 멀티플레이어 모드 |
 | ⭐ | **사용자 인증** | OAuth(Google, GitHub) 로그인, 개인별 대화·주문 관리 |
-| ⭐ | **음성 입력** | Web Speech API를 활용한 음성→텍스트 입력 지원 |
 
 ---
 
@@ -655,110 +631,4 @@ ChatBook은 "AI와의 대화 자체가 소장 가치 있는 콘텐츠가 될 수
 
 ---
 
-## 9. 테스트
 
-### 9.1 테스트 현황
-
-| 구분 | 파일 수 | 테스트 수 | 환경 |
-|------|---------|-----------|------|
-| 백엔드 (pytest) | 4 | 24 | 인메모리 SQLite + StaticPool |
-| 프론트엔드 (Vitest) | 2 | 2 | jsdom + Testing Library |
-| Docker 통합 | 2 | 5단계 | curl 기반 API 검증 |
-
-### 9.2 백엔드 테스트 실행
-
-```bash
-cd backend
-pytest -v                          # 전체 테스트
-pytest tests/test_chat_api.py -v   # 대화방 API
-pytest tests/test_orders_api.py -v # 주문 API (상태 전이 검증)
-pytest tests/test_providers.py -v  # Provider 단위 테스트
-pytest -k "test_create" -v         # 키워드 필터
-```
-
-### 9.3 프론트엔드 테스트 실행
-
-```bash
-cd frontend
-pnpm test          # Vitest run
-pnpm test:watch    # Watch 모드
-```
-
-### 9.4 Docker 통합 테스트
-
-```bash
-# Linux/Mac
-bash test-docker.sh
-
-# Windows
-test-docker.bat
-```
-
----
-
-## 10. 라이선스
-
-MIT License
-
----
-
-## 11. PDF 제출 체크리스트
-
-> 아래 체크리스트는 스위트북 개발 과제 안내문( PDF)에서 명시한 제출 요건 및 README 필수 포함 항목입니다. 각 항목의 충족 여부를 표시했습니다.
-
-### ✅ 서비스 소개 (필수)
-
-- [x] 어떤 서비스인지 한 문장 설명 → [Section 1.1](#11-한-줄-설명)
-- [x] 타겟 사용자 명시 → [Section 1.2](#12-타겟-사용자)
-- [x] 주요 기능 목록 → [Section 1.3](#13-주요-기능)
-
-### ✅ 실행 방법 (필수)
-
-- [x] Docker 실행 가능: `docker compose up -d` 또는 `start-docker.bat` 더블클릭으로 1회 실행 → [Section 2.2](#22-빠른-실행)
-- [x] 환경변수 설정 방법 (`.env.example` → `.env`) → [Section 2.5](#25-환경변수-설정)
-- [x] 접속 URL (`http://localhost:3000`, `http://localhost:8000/docs`) → [Section 2.2](#22-빠른-실행)
-- [x] 포트 변경 방법 명시 → [Section 2.6](#26-포트-변경)
-- [x] 복사-붙여넣기만으로 실행 가능한 명령어 → [Section 2.2](#22-빠른-실행)
-
-### ✅ 완성한 레벨 (필수)
-
-- [x] 구현 완료한 레벨 (Lv1, Lv1+, Lv2, Lv3) 명시 → [Section 3](#3-완성한-레벨-및-구현-내용)
-- [x] 각 레벨에서 구체적으로 구현한 내용 기술 → [Section 3](#3-완성한-레벨-및-구현-내용)
-- [x] 평가 포인트 (서비스 플로우 완성도, 비즈니스 로직, 데이터 모델링) 명시 → [Section 3](#3-완성한-레벨-및-구현-내용)
-
-### ✅ 기술 스택 및 아키텍처 (필수)
-
-- [x] 프론트엔드/백엔드/DB 기술 스택 → [Section 4.1](#41-기술-스택)
-- [x] 기술 스택 선택 이유 → [Section 4.2](#42-기술-선택-이유)
-- [x] 아키텍처 다이어그램 → [Section 4.3](#43-아키텍처-다이어그램)
-- [x] 디렉터리 구조 → [Section 4.6](#46-프로젝트-디렉토리-구조)
-- [x] 핵심 아키텍처 결정사항 → [Section 4.5](#45-핵심-아키텍처-결정사항)
-
-### ✅ AI 도구 사용 내역 (필수)
-
-- [x] 사용한 AI 도구 목록 (Roo Code, Google Gemini) → [Section 5](#5-ai-도구-사용-내역)
-- [x] 각 도구별 활용 내용 및 구간 → [Section 5](#5-ai-도구-사용-내역)
-- [x] AI 활용 철학 및 교차 검증 워크플로우 → [Section 5](#5-ai-도구-사용-내역)
-
-### ✅ 설계 의도 (필수)
-
-- [x] 서비스 아이디어 선택 이유 → [Section 6.1](#61-서비스-아이디어-선택-이유)
-- [x] 사업적 가능성에 대한 견해 → [Section 6.2](#62-사업적-가능성--확장성)
-- [x] 추가 시간이 있었다면 구현했을 기능 → [Section 6.3](#63-추가-구현-희망-기능-시간이-더-있었다면)
-
-### ✅ 그 외 제출 요건 확인
-
-- [x] `.env` 파일이 `.gitignore`에 등록되어 있는가 → `.gitignore`에 `.env` 포함
-- [x] GitHub 저장소가 **Public**인가 → Public 저장소
-- [x] `docker compose up`으로 정상 실행되는가 → `start-docker.bat` / `docker compose up -d` 검증 완료
-- [x] 더미 데이터가 포함되어 있는가 (로그인 없이 확인 가능) → 멱등적 시드 데이터 (대화방 3, 주문 2, 캐릭터봇 1)
-- [x] 포트 변경이 환경변수로 가능한가 → `BACKEND_PORT`, `FRONTEND_PORT` 환경변수 지원
-- [x] README.md만 보고 실행 가능한가 → Section 2에서 단계별 실행 가이드 제공
-
----
-
-> **제출 정보**: 본 프로젝트는 (주)스위트북 바이브코딩 풀스택 개발자 채용 과제로 제작되었습니다.
->
-> **구글폼 제출 링크**: [https://forms.gle/4EuYDFXH1bBdMfGT7](https://forms.gle/4EuYDFXH1bBdMfGT7)
->
-> **문의**: 과제 관련 문의는 (주)스위트북 개발팀장 이정훈 ([jpun@sweetbook.com](mailto:jpun@sweetbook.com)) 으로 연락 바랍니다.
